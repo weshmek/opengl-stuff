@@ -1,0 +1,6 @@
+- Make a program-facing version of the shader compiler
+	- variable-argument functions don't work well with, say, reading
+	  shader pipeline definitions from a file
+- Make a vertex specification function
+
+- Learn how to use textures
