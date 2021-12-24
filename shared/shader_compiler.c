@@ -24,6 +24,7 @@ enum READ_STATE {
 	READ_STATE_READING_NUMBER,
 	READ_STATE_PCT_SIGN_READ,
 	READ_STATE_READ_TESSELATION_SHADER,
+	READ_STATE_POST_COMPILE_FRAGMENT_SHADER,
 	NUM_READ_STATES,
 };
 
@@ -87,6 +88,7 @@ struct shader_program compile_shaders(const char *fmt, ...)
 	GLint program;
 	va_list v;
 	int num_shader_paths;
+	int num_frag_data_binds;
 	char c;
 	enum READ_STATE state;
 	const char *shader_path;
@@ -114,6 +116,7 @@ struct shader_program compile_shaders(const char *fmt, ...)
 			if (c == '%') {
 				state = READ_STATE_PCT_SIGN_READ;
 				num_shader_paths = 0;
+				num_frag_data_binds = 0;
 				continue;
 			}
 			goto fail;
@@ -145,17 +148,13 @@ struct shader_program compile_shaders(const char *fmt, ...)
 				/*
 				 * read fragment shader
 				 */
-				const char *fragment_shader_zero_bind;
 
 				ret.fragment_shader = compile_single_shader(GL_FRAGMENT_SHADER, num_shader_paths, shader_sources);
 
 				glAttachShader(program, ret.fragment_shader);
-				fragment_shader_zero_bind = va_arg(v, const char*);
-				glBindFragDataLocation(program, 0, fragment_shader_zero_bind);
-				printf("fragment_shader_zero_bind = %s\n", fragment_shader_zero_bind);
 
-				state = READ_STATE_READ_BEGIN;
-				goto done_compiling_single_shader;
+				state = READ_STATE_POST_COMPILE_FRAGMENT_SHADER;
+				continue;
 			}
 			if (c == 'g') {
 				/*
@@ -228,8 +227,28 @@ struct shader_program compile_shaders(const char *fmt, ...)
 			}
 			goto cleanup_fail;
 		}
+		case READ_STATE_POST_COMPILE_FRAGMENT_SHADER:
+		{
+			if (c == '%') {
+				int i;
+				state = READ_STATE_PCT_SIGN_READ;
+				num_shader_paths = 0;
+				for (i = 0; i < num_frag_data_binds; i++) {
+					int bind_point = va_arg(v, int);
+					const char *bind_name = va_arg(v, const char*);
+					glBindFragDataLocation(program, bind_point, bind_name);
+					printf("Fragment shader colour attachment %d bound to %s\n", bind_point, bind_name);
+				}
+				num_frag_data_binds = 0;
+				goto done_compiling_single_shader;
+			} else if ((c <= '9') && (c >= '0')) {
+				num_frag_data_binds = (num_frag_data_binds * 10) +  (c - '0');
+				continue;
+			goto cleanup_fail;
+		}
 		default:
 			goto fail;
+		}
 		}
 done_compiling_single_shader:
 		free(shader_sources);
@@ -239,9 +258,19 @@ cleanup_fail:
 		goto fail;
 	}
 
+	if (state == READ_STATE_POST_COMPILE_FRAGMENT_SHADER) {
+		int i;
+		for (i = 0; i < num_frag_data_binds; i++) {
+			int bind_point = va_arg(v, int);
+			const char *bind_name = va_arg(v, const char*);
+			glBindFragDataLocation(program, bind_point, bind_name);
+			printf("%s:%d - Fragment shader colour attachment %d bound to %s\n", __FILE__, __LINE__, bind_point, bind_name);
+		}
+	}
+
 
 	glLinkProgram(program);
-	
+
 	/*
 	 * For debug info
 	 */
