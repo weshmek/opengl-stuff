@@ -7,6 +7,9 @@ struct shader_program {
 	GLint vertex_shader;
 	GLint geometry_shader;
 	GLint fragment_shader;
+	GLint compute_shader;
+	GLint tesselation_control_shader;
+	GLint tesselation_evaluation_shader;
 	/* and more...*/
 
 };
@@ -17,7 +20,10 @@ struct shader_program {
  * %f = fragment shader
  * %v = vertex shader
  * %g = geometry shader
+ * %c = compute shader
+ * %te = tesselation evaluation shader
+ * %tc = tesselation control shader
  */
-GLint compile_shaders(const char *fmt, ...);
+struct shader_program compile_shaders(const char *fmt, ...);
 
 #endif

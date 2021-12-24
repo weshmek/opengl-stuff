@@ -1,6 +1,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "shader_compiler.h"
 #include "shader_reader.h"
 
@@ -22,30 +23,29 @@ enum READ_STATE {
 	READ_STATE_READ_BEGIN,
 	READ_STATE_READING_NUMBER,
 	READ_STATE_PCT_SIGN_READ,
+	READ_STATE_READ_TESSELATION_SHADER,
 	NUM_READ_STATES,
 };
 
-static GLuint compile_single_shader(GLenum shader_type, int num_files, va_list *v) {
-				/* TODO */
-				/* TODO */
-				/* TODO */
+static GLuint compile_single_shader(GLenum shader_type, int num_files, const char **shader_source_files)
+{
 	unsigned int i = 0;
 	const char **shader_sources;
-	const char *shader_source_file;
 	GLint shader;
 
 	/* for debugging */
-	char buffer[512];
+	char *buffer;
 	GLint status, shader_source_length, shader_info_log_length;
 
-	printf("%s %d shader_type = %s\n", __FILE__, __LINE__, shader_type == GL_GEOMETRY_SHADER ? "GL_GEOMETRY_SHADER" : shader_type == GL_VERTEX_SHADER ? "GL_VERTEX_SHADER" : shader_type == GL_FRAGMENT_SHADER ? "GL_FRAGMENT_SHADER" : "UNKNOWN SHADER TYPE");
-	num_files = num_files ? num_files : 1;
+	printf("%s:%d shader_type = %s\n", __FILE__, __LINE__, shader_type == GL_GEOMETRY_SHADER ? "GL_GEOMETRY_SHADER" : shader_type == GL_VERTEX_SHADER ? "GL_VERTEX_SHADER" : shader_type == GL_COMPUTE_SHADER ? "GL_COMPUTE_SHADER" : shader_type == GL_FRAGMENT_SHADER ? "GL_FRAGMENT_SHADER" : shader_type == GL_TESS_EVALUATION_SHADER ? "GL_TESS_EVALUATION_SHADER" : shader_type == GL_TESS_CONTROL_SHADER ? "GL_TESS_CONTROL_SHADER" : "UNKNOWN SHADER TYPE");
+
 	shader = glCreateShader(shader_type);
+
 	shader_sources = malloc(num_files * sizeof(const char *));
+
 	for (i = 0; i < num_files; i++) {
-		shader_source_file = va_arg(*v, const char *);
-		printf("shader file: %s\n", shader_source_file);
-		shader_sources[i] = read_shader(shader_source_file);
+		printf("shader file: %s\n", shader_source_files[i]);
+		shader_sources[i] = read_shader(shader_source_files[i]);
 		printf("shader source: %s\n", shader_sources[i]);
 	}
 	glShaderSource(shader, num_files, shader_sources, NULL);
@@ -54,14 +54,16 @@ static GLuint compile_single_shader(GLenum shader_type, int num_files, va_list *
 	glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
 	glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &shader_info_log_length);
 	glGetShaderiv(shader, GL_SHADER_SOURCE_LENGTH, &shader_source_length);
-	glGetShaderInfoLog(shader, sizeof(buffer), NULL, buffer);
-	printf("shader: %d:\nCompile Status: %s\nInfo log length: %d\nSource length: %d\n",
+	printf("shader %d:\nCompile Status: %s\nInfo log length: %d\nSource length: %d\n",
 		(int) shader,
 		status == GL_TRUE ? "GL_TRUE" : "GL_FALSE",
 		(int) shader_info_log_length,
 		(int) shader_source_length);
-	if ((int)shader_info_log_length > 0) {
+	if (status != GL_TRUE){
+		buffer = malloc(shader_info_log_length);
+		glGetShaderInfoLog(shader, shader_info_log_length, NULL, buffer);
 		printf("buffer: %s\n", buffer);
+		free(buffer);
 		goto fail;
 	}
 	for (i = 0; i < num_files; i++) {
@@ -76,11 +78,11 @@ fail:
 		free((void*)shader_sources[i]);
 	}
 	free(shader_sources);
-	
+
 	return 0;
 }
 
-GLint compile_shaders(const char *fmt, ...)
+struct shader_program compile_shaders(const char *fmt, ...)
 {
 	GLint program;
 	va_list v;
@@ -88,9 +90,13 @@ GLint compile_shaders(const char *fmt, ...)
 	char c;
 	enum READ_STATE state;
 	const char *shader_path;
+	struct shader_program ret;
+	const char **shader_sources;
 	/* for printing errors */
 	GLint status, program_info_log_length, program_num_attached_shaders, program_num_active_attributes;
-	char buffer[512];
+	char *buffer;
+
+	memset(&ret, 0, sizeof(ret));
 
 	va_start(v, fmt);
 	state = READ_STATE_READ_BEGIN;
@@ -99,7 +105,9 @@ GLint compile_shaders(const char *fmt, ...)
 		goto fail;
 
 	while ((c = *fmt++)) {
-		if (state == READ_STATE_READ_BEGIN) {
+		switch (state) {
+		case READ_STATE_READ_BEGIN:
+		{
 			/*
 			 * only valid character is %
 			 */
@@ -110,43 +118,55 @@ GLint compile_shaders(const char *fmt, ...)
 			}
 			goto fail;
 		}
-		if (state == READ_STATE_PCT_SIGN_READ || state == READ_STATE_READING_NUMBER) {
+		case READ_STATE_PCT_SIGN_READ:
+		case READ_STATE_READING_NUMBER:
+		{
 			/*
-			 * next character can be a digit or fgv
+			 * next character can be a digit or [fgvct]
 			 */
 			if ((c <= '9') && (c >= '0')) {
 				state = READ_STATE_READING_NUMBER;
 				num_shader_paths = num_shader_paths * 10 + (c - '0');
 				continue;
+			} else {
+				/*
+				 * finished reading digits; num_shader_paths is now known
+				 */
+				int i;
+
+				if (num_shader_paths == 0)
+					num_shader_paths = 1;
+				shader_sources = malloc(num_shader_paths * sizeof(const char*));
+
+				for (i = 0; i < num_shader_paths; i++)
+					shader_sources[i] = va_arg(v, const char*);
 			}
 			if (c == 'f') {
 				/*
 				 * read fragment shader
 				 */
-				GLint fragment_shader;
 				const char *fragment_shader_zero_bind;
-				
-				fragment_shader = compile_single_shader(GL_FRAGMENT_SHADER, num_shader_paths, &v);
-				
-				glAttachShader(program, fragment_shader);
+
+				ret.fragment_shader = compile_single_shader(GL_FRAGMENT_SHADER, num_shader_paths, shader_sources);
+
+				glAttachShader(program, ret.fragment_shader);
 				fragment_shader_zero_bind = va_arg(v, const char*);
 				glBindFragDataLocation(program, 0, fragment_shader_zero_bind);
 				printf("fragment_shader_zero_bind = %s\n", fragment_shader_zero_bind);
 
 				state = READ_STATE_READ_BEGIN;
-				continue;
+				goto done_compiling_single_shader;
 			}
 			if (c == 'g') {
 				/*
 				 * read geometry shader
 				 */
-				GLint geometry_shader;
 
-				geometry_shader = compile_single_shader(GL_GEOMETRY_SHADER, num_shader_paths, &v);
+				ret.geometry_shader = compile_single_shader(GL_GEOMETRY_SHADER, num_shader_paths, shader_sources);
 
-				glAttachShader(program, geometry_shader);
+				glAttachShader(program, ret.geometry_shader);
 				state = READ_STATE_READ_BEGIN;
-				continue;
+				goto done_compiling_single_shader;
 			}
 			if (c == 'v') {
 				/*
@@ -154,19 +174,72 @@ GLint compile_shaders(const char *fmt, ...)
 				 */
 				GLint vertex_shader;
 
-				vertex_shader = compile_single_shader(GL_VERTEX_SHADER, num_shader_paths, &v);
-				
-				glAttachShader(program, vertex_shader);
+				ret.vertex_shader = compile_single_shader(GL_VERTEX_SHADER, num_shader_paths, shader_sources);
+
+				glAttachShader(program, ret.vertex_shader);
 				state = READ_STATE_READ_BEGIN;
+				goto done_compiling_single_shader;
+			}
+			if (c == 'c') {
+				/*
+				 * read compute shader
+				 */
+				GLint compute_shader;
+
+				ret.compute_shader = compile_single_shader(GL_COMPUTE_SHADER, num_shader_paths, shader_sources);
+
+				glAttachShader(program, ret.compute_shader);
+				state = READ_STATE_READ_BEGIN;
+				goto done_compiling_single_shader;
+			}
+			if (c == 't') {
+				state = READ_STATE_READ_TESSELATION_SHADER;
 				continue;
 			}
+
+			/*
+			 * unrecognized shader type;
+			 * clean up shader source list and fail
+			 */
+			goto cleanup_fail;
+		}
+		case READ_STATE_READ_TESSELATION_SHADER:
+		{
+			if (c == 'e') {
+				/*
+				 * read tesselation evaluation shader
+				 */
+				ret.tesselation_evaluation_shader = compile_single_shader(GL_TESS_EVALUATION_SHADER, num_shader_paths, shader_sources);
+
+				glAttachShader(program, ret.tesselation_evaluation_shader);
+				state = READ_STATE_READ_BEGIN;
+				goto done_compiling_single_shader;
+			}
+			if (c == 'c') {
+				/*
+				 * read tesselation control shader
+				 */
+
+				ret.tesselation_control_shader = compile_single_shader(GL_TESS_CONTROL_SHADER, num_shader_paths, shader_sources);
+
+				glAttachShader(program, ret.tesselation_control_shader);
+				state = READ_STATE_READ_BEGIN;
+				goto done_compiling_single_shader;
+			}
+			goto cleanup_fail;
+		}
+		default:
 			goto fail;
 		}
-
+done_compiling_single_shader:
+		free(shader_sources);
+		continue;
+cleanup_fail:
+		free(shader_sources);
 		goto fail;
 	}
 
-	
+
 	glLinkProgram(program);
 	
 	/*
@@ -182,11 +255,21 @@ GLint compile_shaders(const char *fmt, ...)
 		(int) program_info_log_length,
 		(int) program_num_attached_shaders,
 		(int) program_num_active_attributes);
+	if (status != GL_TRUE){
+		buffer = malloc(program_info_log_length);
+		glGetProgramInfoLog(program, program_info_log_length, NULL, buffer);
+		printf("buffer: %s\n", buffer);
+		free(buffer);
+		goto fail;
+	}
 
 	va_end(v);
-	return program;
+	ret.program = program;
+	glReleaseShaderCompiler();
+	return ret;
 fail:
-	printf("%s %d", __FUNCTION__, __LINE__);
 	va_end(v);
-	return 0;
+	ret.program = 0;
+	glReleaseShaderCompiler();
+	return ret;
 }
