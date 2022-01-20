@@ -143,9 +143,9 @@ static const struct cube_vertex tetrahedron_vertices[] = {
 };
 
 static const GLchar tetrahedron_elements[][3] = {
-	{ 0, 1, 2 },
-	{ 0, 2, 3 },
-	{ 0, 3, 1 }
+	{ 2, 1, 0 },
+	{ 3, 2, 0 },
+	{ 1, 3, 0 }
 };
 	
 static struct {
@@ -166,9 +166,9 @@ static GLenum clip_origin = GL_LOWER_LEFT;
 static void (*depth_clamp_func)(GLenum) = glDisable;
 static GLdouble near = 0.0f;
 static GLdouble far = 1.0f;
-static GLenum front_face = GL_CCW;
+static GLenum front_face = GL_CW;
 static GLenum cull_face_mode = GL_BACK;
-static void (*cull_face_func)(GLenum) = glDisable;
+static void (*cull_face_func)(GLenum) = glEnable;
 static GLenum polygon_mode = GL_FILL;
 
 static void (*depth_test_func)(GLenum) = glEnable;
