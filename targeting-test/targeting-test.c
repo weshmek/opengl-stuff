@@ -641,6 +641,7 @@ int main(void)
 
 	glBindBuffer(GL_ARRAY_BUFFER, timer_bo);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(instance_states), instance_states, GL_STATIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	check_error();
 
 	{
