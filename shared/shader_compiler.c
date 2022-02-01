@@ -7,16 +7,21 @@
 
 /*
  * Format string (copied from header so I don't need to keep opening it)
- * %[n](fvg)
+ * %[n](v|g)|(te)|(tc)|(f[nn])
  * n = number of source files comprising shader
- * %f = fragment shader (followed by 0 Data location in arg list)
+ * %f = fragment shader
+ * 	fragment shader is followed by nn (int, const char*) pairs
+ * 	referring to colour attachment binding and variable name.
  * %v = vertex shader
  * %d = geometry shader
+ * %tc = tesselation control shader
+ * %te = tesselation geometry shader
  * return value = the program handle
  *
  * Examples
  * 	GLuint program = compile_shaders("%v%f", "assets/vertex_shader.vs", "assets/fragment_shader.fs", "out_colour");
  * 	GLuint program = compile_shaders("%2v%3f%2g", "assets/universal_header.sf", "assets/vertex_shader.vs", "assets/universal_header.sf", "assets/fragment_shader_1.fs", "assets/fragment_shader_2.fs", "out_colour", "assets/universal_header.sf", "assets/geometry_shader.gs");
+ * 	GLuint program = compile_shaders("%f2", "assets/fragment_shader.fs", 0, "colour1", 1, "colour2")
  */
 
 enum READ_STATE {
@@ -91,9 +96,8 @@ struct shader_program compile_shaders(const char *fmt, ...)
 	int num_frag_data_binds;
 	char c;
 	enum READ_STATE state;
-	const char *shader_path;
-	struct shader_program ret;
 	const char **shader_sources;
+	struct shader_program ret;
 	/* for printing errors */
 	GLint status, program_info_log_length, program_num_attached_shaders, program_num_active_attributes;
 	char *buffer;
@@ -108,147 +112,150 @@ struct shader_program compile_shaders(const char *fmt, ...)
 
 	while ((c = *fmt++)) {
 		switch (state) {
-		case READ_STATE_READ_BEGIN:
-		{
-			/*
-			 * only valid character is %
-			 */
-			if (c == '%') {
-				state = READ_STATE_PCT_SIGN_READ;
-				num_shader_paths = 0;
-				num_frag_data_binds = 0;
-				continue;
-			}
-			goto fail;
-		}
-		case READ_STATE_PCT_SIGN_READ:
-		case READ_STATE_READING_NUMBER:
-		{
-			/*
-			 * next character can be a digit or [fgvct]
-			 */
-			if ((c <= '9') && (c >= '0')) {
-				state = READ_STATE_READING_NUMBER;
-				num_shader_paths = num_shader_paths * 10 + (c - '0');
-				continue;
-			} else {
+			case READ_STATE_READ_BEGIN:
+			{
 				/*
-				 * finished reading digits; num_shader_paths is now known
+				 * only valid character is %
 				 */
-				int i;
-
-				if (num_shader_paths == 0)
-					num_shader_paths = 1;
-				shader_sources = malloc(num_shader_paths * sizeof(const char*));
-
-				for (i = 0; i < num_shader_paths; i++)
-					shader_sources[i] = va_arg(v, const char*);
-			}
-			if (c == 'f') {
-				/*
-				 * read fragment shader
-				 */
-
-				ret.fragment_shader = compile_single_shader(GL_FRAGMENT_SHADER, num_shader_paths, shader_sources);
-
-				glAttachShader(program, ret.fragment_shader);
-
-				state = READ_STATE_POST_COMPILE_FRAGMENT_SHADER;
-				continue;
-			}
-			if (c == 'g') {
-				/*
-				 * read geometry shader
-				 */
-
-				ret.geometry_shader = compile_single_shader(GL_GEOMETRY_SHADER, num_shader_paths, shader_sources);
-
-				glAttachShader(program, ret.geometry_shader);
-				state = READ_STATE_READ_BEGIN;
-				goto done_compiling_single_shader;
-			}
-			if (c == 'v') {
-				/*
-				 * read vertex shader
-				 */
-				GLint vertex_shader;
-
-				ret.vertex_shader = compile_single_shader(GL_VERTEX_SHADER, num_shader_paths, shader_sources);
-
-				glAttachShader(program, ret.vertex_shader);
-				state = READ_STATE_READ_BEGIN;
-				goto done_compiling_single_shader;
-			}
-			if (c == 'c') {
-				/*
-				 * read compute shader
-				 */
-				GLint compute_shader;
-
-				ret.compute_shader = compile_single_shader(GL_COMPUTE_SHADER, num_shader_paths, shader_sources);
-
-				glAttachShader(program, ret.compute_shader);
-				state = READ_STATE_READ_BEGIN;
-				goto done_compiling_single_shader;
-			}
-			if (c == 't') {
-				state = READ_STATE_READ_TESSELATION_SHADER;
-				continue;
-			}
-
-			/*
-			 * unrecognized shader type;
-			 * clean up shader source list and fail
-			 */
-			goto cleanup_fail;
-		}
-		case READ_STATE_READ_TESSELATION_SHADER:
-		{
-			if (c == 'e') {
-				/*
-				 * read tesselation evaluation shader
-				 */
-				ret.tesselation_evaluation_shader = compile_single_shader(GL_TESS_EVALUATION_SHADER, num_shader_paths, shader_sources);
-
-				glAttachShader(program, ret.tesselation_evaluation_shader);
-				state = READ_STATE_READ_BEGIN;
-				goto done_compiling_single_shader;
-			}
-			if (c == 'c') {
-				/*
-				 * read tesselation control shader
-				 */
-
-				ret.tesselation_control_shader = compile_single_shader(GL_TESS_CONTROL_SHADER, num_shader_paths, shader_sources);
-
-				glAttachShader(program, ret.tesselation_control_shader);
-				state = READ_STATE_READ_BEGIN;
-				goto done_compiling_single_shader;
-			}
-			goto cleanup_fail;
-		}
-		case READ_STATE_POST_COMPILE_FRAGMENT_SHADER:
-		{
-			if (c == '%') {
-				int i;
-				state = READ_STATE_PCT_SIGN_READ;
-				num_shader_paths = 0;
-				for (i = 0; i < num_frag_data_binds; i++) {
-					int bind_point = va_arg(v, int);
-					const char *bind_name = va_arg(v, const char*);
-					glBindFragDataLocation(program, bind_point, bind_name);
-					printf("Fragment shader colour attachment %d bound to %s\n", bind_point, bind_name);
+				if (c == '%') {
+					state = READ_STATE_PCT_SIGN_READ;
+					num_shader_paths = 0;
+					num_frag_data_binds = 0;
+					continue;
 				}
-				num_frag_data_binds = 0;
-				goto done_compiling_single_shader;
-			} else if ((c <= '9') && (c >= '0')) {
-				num_frag_data_binds = (num_frag_data_binds * 10) +  (c - '0');
-				continue;
-			goto cleanup_fail;
-		}
-		default:
-			goto fail;
-		}
+				goto fail;
+			}
+			case READ_STATE_PCT_SIGN_READ:
+			case READ_STATE_READING_NUMBER:
+			{
+				/*
+				 * next character can be a digit or [fgvct]
+				 */
+				if ((c <= '9') && (c >= '0')) {
+					state = READ_STATE_READING_NUMBER;
+					num_shader_paths = (num_shader_paths * 10) + (c - '0');
+					continue;
+				} else {
+					/*
+					 * finished reading digits; num_shader_paths is now known
+					 */
+					int i;
+
+					if (num_shader_paths == 0)
+						num_shader_paths = 1;
+					shader_sources = malloc(num_shader_paths * sizeof(const char*));
+
+					for (i = 0; i < num_shader_paths; i++)
+						shader_sources[i] = va_arg(v, const char*);
+				}
+				if (c == 'f') {
+					/*
+					 * compile fragment shader
+					 */
+
+					ret.fragment_shader = compile_single_shader(GL_FRAGMENT_SHADER, num_shader_paths, shader_sources);
+
+					glAttachShader(program, ret.fragment_shader);
+
+					state = READ_STATE_POST_COMPILE_FRAGMENT_SHADER;
+					continue;
+				}
+				if (c == 'g') {
+					/*
+					 * compile geometry shader
+					 */
+
+					ret.geometry_shader = compile_single_shader(GL_GEOMETRY_SHADER, num_shader_paths, shader_sources);
+
+					glAttachShader(program, ret.geometry_shader);
+					state = READ_STATE_READ_BEGIN;
+					goto done_compiling_single_shader;
+				}
+				if (c == 'v') {
+					/*
+					 * compile vertex shader
+					 */
+
+					ret.vertex_shader = compile_single_shader(GL_VERTEX_SHADER, num_shader_paths, shader_sources);
+
+					glAttachShader(program, ret.vertex_shader);
+					state = READ_STATE_READ_BEGIN;
+					goto done_compiling_single_shader;
+				}
+				if (c == 'c') {
+					/*
+					 * compile compute shader
+					 */
+					ret.compute_shader = compile_single_shader(GL_COMPUTE_SHADER, num_shader_paths, shader_sources);
+
+					glAttachShader(program, ret.compute_shader);
+					state = READ_STATE_READ_BEGIN;
+					goto done_compiling_single_shader;
+				}
+				if (c == 't') {
+					state = READ_STATE_READ_TESSELATION_SHADER;
+					continue;
+				}
+
+				/*
+				 * unrecognized shader type;
+				 * clean up shader source list and fail
+				 */
+				goto cleanup_fail;
+			}
+			case READ_STATE_READ_TESSELATION_SHADER:
+			{
+				if (c == 'e') {
+					/*
+					 * compile tesselation evaluation shader
+					 */
+					ret.tesselation_evaluation_shader = compile_single_shader(GL_TESS_EVALUATION_SHADER, num_shader_paths, shader_sources);
+
+					glAttachShader(program, ret.tesselation_evaluation_shader);
+					state = READ_STATE_READ_BEGIN;
+					goto done_compiling_single_shader;
+				}
+				if (c == 'c') {
+					/*
+					 * compile tesselation control shader
+					 */
+					ret.tesselation_control_shader = compile_single_shader(GL_TESS_CONTROL_SHADER, num_shader_paths, shader_sources);
+
+					glAttachShader(program, ret.tesselation_control_shader);
+					state = READ_STATE_READ_BEGIN;
+					goto done_compiling_single_shader;
+				}
+				goto cleanup_fail;
+			}
+			case READ_STATE_POST_COMPILE_FRAGMENT_SHADER:
+			{
+				/*
+				 * after reading fragment shader,
+				 * bind fragment shader outputs to
+				 * colours, if any
+				 */
+				if (c == '%') {
+					int i;
+
+					state = READ_STATE_PCT_SIGN_READ;
+					num_shader_paths = 0;
+					for (i = 0; i < num_frag_data_binds; i++) {
+						int bind_point = va_arg(v, int);
+						const char *bind_name = va_arg(v, const char*);
+
+						glBindFragDataLocation(program, bind_point, bind_name);
+						printf("Fragment shader colour attachment %d bound to %s\n", bind_point, bind_name);
+					}
+					num_frag_data_binds = 0;
+					goto done_compiling_single_shader;
+				} else if ((c <= '9') && (c >= '0')) {
+					num_frag_data_binds = (num_frag_data_binds * 10) +  (c - '0');
+					continue;
+				}
+				goto cleanup_fail;
+			}
+			default:
+				goto fail;
 		}
 done_compiling_single_shader:
 		free(shader_sources);
@@ -259,10 +266,17 @@ cleanup_fail:
 	}
 
 	if (state == READ_STATE_POST_COMPILE_FRAGMENT_SHADER) {
+		/*
+		 * after reading fragment shader,
+		 * bind fragment shader outputs to
+		 * colours, if any
+		 */
 		int i;
+
 		for (i = 0; i < num_frag_data_binds; i++) {
 			int bind_point = va_arg(v, int);
 			const char *bind_name = va_arg(v, const char*);
+
 			glBindFragDataLocation(program, bind_point, bind_name);
 			printf("%s:%d - Fragment shader colour attachment %d bound to %s\n", __FILE__, __LINE__, bind_point, bind_name);
 		}
