@@ -14,6 +14,7 @@ struct shader_program {
 
 };
 /*
+ * compile_shaders
  * Format string
  * {%[n]v|g|te|tc|f[nn]}+
  * n = number of source files comprising shader
