@@ -34,6 +34,7 @@ struct shader_program {
  * 	GLuint program = compile_shaders("%f2", "assets/fragment_shader.fs", 0, "colour1", 1, "colour2")
  */
 
+struct shader_program vcompile_shaders(const char *fmt, va_list v);
 struct shader_program compile_shaders(const char *fmt, ...);
 
 #endif
