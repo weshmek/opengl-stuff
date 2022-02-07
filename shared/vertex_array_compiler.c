@@ -144,14 +144,14 @@ int vcompile_vertex_array(const GLuint vao, const char *fmt, va_list v)
 					continue;
 				goto fail;
 			case VERTEX_ARRAY_COMPILER_FLOAT_ARRAY_READ:
+				if (c == 'n') {
+					state = VERTEX_ARRAY_COMPILER_NORMALIZED_FLOAT_ARRAY_READ;
+					continue;
+				}
 				glVertexArrayAttribFormat(vao, va_arg(v, GLuint), va_arg(v, GLint), va_arg(v, GLenum), GL_FALSE, va_arg(v, GLuint));
 				if (c == '%') {
 					state = VERTEX_ARRAY_COMPILER_PCT_SIGN_READ;
 
-					continue;
-				}
-				if (c == 'n') {
-					state = VERTEX_ARRAY_COMPILER_NORMALIZED_FLOAT_ARRAY_READ;
 					continue;
 				}
 				if (c == '\0')
