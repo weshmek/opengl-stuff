@@ -4,17 +4,17 @@
 #include <stdarg.h>
 /*
  * *compile*vertex_array
- * [[%e][%i][%f][%l][%b][%a][%d]]
+ * [[%e][%i][%f[n]][%l][%b][%a][%d]]
  * %e: GLuint, the name of the element buffer
  * $i: GLuint attribindex
  *     GLint size (1 to 4),
  *     GLenum type,
  *     GLuint relativeoffset
- * %f: GLuint attribindex,
+ * %f[n]: GLuint attribindex,
  *     GLint size (1 to 4),
  *     GLenum type,
- *     GLboolean normalized,
  *     GLuint relativeoffset
+ *     n present indicates normalized
  * %l: GLuint attribindex,
  *     GLint size (1 to 4),
  *     GLenum type,
@@ -34,6 +34,6 @@
 
 int vcompile_bound_vertex_array(const char *fmt, va_list v);
 int compile_bound_vertex_array(const char *fmt, ...);
-int vcompile_vertex_array(GLint vao, const char *fmt, va_list v);
-int compile_vertex_array(GLint vao, const char *fmt, ...);
+int vcompile_vertex_array(const GLint vao, const char *fmt, va_list v);
+int compile_vertex_array(const GLint vao, const char *fmt, ...);
 #endif
