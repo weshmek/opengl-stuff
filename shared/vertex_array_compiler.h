@@ -28,6 +28,8 @@
  *     GLuint bindingindex
  * %d: GLuint bindingindex,
  *     GLuint divisor
+ * %-: GLuint attibindex, index to disable
+ * %+: GLuint attribindex, index to enable
  *
  * the *compile_bound_vertex_array calls should not affect the value of bound vertex array
  * calls to *compile*vertex_array should not affect any attributes not specified in the argument list
