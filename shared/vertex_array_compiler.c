@@ -57,9 +57,19 @@ int vcompile_vertex_array(const GLuint vao, const char *fmt, va_list v)
 	state = VERTEX_ARRAY_COMPILER_BEGIN;
 	ret = 0;
 
-	while ((c = *fmt++)) {
+	c = *fmt;
+	if (c == '%')
+		state = VERTEX_ARRAY_COMPILER_PCT_SIGN_READ;
+	else
+		goto fail;
+
+	do {
+		c = *(fmt + 1);
 		switch (state) {
 			case VERTEX_ARRAY_COMPILER_BEGIN:
+				/*
+				 * should never be in this state
+				 */
 				if (c == '%') {
 					state = VERTEX_ARRAY_COMPILER_PCT_SIGN_READ;
 					continue;
@@ -104,106 +114,116 @@ int vcompile_vertex_array(const GLuint vao, const char *fmt, va_list v)
 				}
 				goto fail;
 			case VERTEX_ARRAY_COMPILER_INT_ARRAY_READ:
+				glVertexArrayAttribIFormat(vao, va_arg(v, GLuint), va_arg(v, GLint), va_arg(v, GLenum), va_arg(v, GLuint));
 				if (c == '%') {
 					state = VERTEX_ARRAY_COMPILER_PCT_SIGN_READ;
 
-					glVertexArrayAttribIFormat(vao, va_arg(v, GLuint), va_arg(v, GLint), va_arg(v, GLenum), va_arg(v, GLuint));
-					ret++;
 					continue;
 				}
+				if (c == '\0')
+					continue;
 				goto fail;
 			case VERTEX_ARRAY_COMPILER_ELEMENT_BUFFER_BINDING_READ:
+				glVertexArrayElementBuffer(vao, va_arg(v, GLuint));
 				if (c == '%') {
 					state = VERTEX_ARRAY_COMPILER_PCT_SIGN_READ;
 
-					glVertexArrayElementBuffer(vao, va_arg(v, GLuint));
-					ret++;
 					continue;
 				}
+				if (c == '\0')
+					continue;
 				goto fail;
 			case VERTEX_ARRAY_COMPILER_DOUBLE_ARRAY_READ:
+				glVertexArrayAttribLFormat(vao, va_arg(v, GLuint), va_arg(v, GLint), va_arg(v, GLenum), va_arg(v, GLuint));
 				if (c == '%') {
 					state = VERTEX_ARRAY_COMPILER_PCT_SIGN_READ;
 
-					glVertexArrayAttribLFormat(vao, va_arg(v, GLuint), va_arg(v, GLint), va_arg(v, GLenum), va_arg(v, GLuint));
-					ret++;
+					continue;
 				}
+				if (c == '\0')
+					continue;
 				goto fail;
 			case VERTEX_ARRAY_COMPILER_FLOAT_ARRAY_READ:
+				glVertexArrayAttribFormat(vao, va_arg(v, GLuint), va_arg(v, GLint), va_arg(v, GLenum), GL_FALSE, va_arg(v, GLuint));
 				if (c == '%') {
 					state = VERTEX_ARRAY_COMPILER_PCT_SIGN_READ;
 
-					glVertexArrayAttribFormat(vao, va_arg(v, GLuint), va_arg(v, GLint), va_arg(v, GLenum), GL_FALSE, va_arg(v, GLuint));
-					ret++;
 					continue;
 				}
 				if (c == 'n') {
 					state = VERTEX_ARRAY_COMPILER_NORMALIZED_FLOAT_ARRAY_READ;
 					continue;
 				}
+				if (c == '\0')
+					continue;
 				goto fail;
 			case VERTEX_ARRAY_COMPILER_BUFFER_BINDING_READ:
+				glVertexArrayVertexBuffer(vao, va_arg(v, GLuint), va_arg(v, GLuint), va_arg(v, GLintptr), va_arg(v, GLsizei));
 				if (c == '%') {
 					state = VERTEX_ARRAY_COMPILER_PCT_SIGN_READ;
 
-					glVertexArrayVertexBuffer(vao, va_arg(v, GLuint), va_arg(v, GLuint), va_arg(v, GLintptr), va_arg(v, GLsizei));
-					ret++;
 					continue;
 				}
+				if (c == '\0')
+					continue;
 				goto fail;
 			case VERTEX_ARRAY_COMPILER_ARRAY_ATTRIB_BINDING_READ:
+				glVertexArrayAttribBinding(vao, va_arg(v, GLuint), va_arg(v, GLuint));
 				if (c == '%') {
 					state = VERTEX_ARRAY_COMPILER_PCT_SIGN_READ;
 
-					glVertexArrayAttribBinding(vao, va_arg(v, GLuint), va_arg(v, GLuint));
-					ret++;
 					continue;
 				}
+				if (c == '\0')
+					continue;
 				goto fail;
 			case VERTEX_ARRAY_COMPILER_DIVISOR_READ:
+				glVertexArrayBindingDivisor(vao, va_arg(v, GLuint), va_arg(v, GLuint));
 				if (c == '%') {
 					state = VERTEX_ARRAY_COMPILER_PCT_SIGN_READ;
 
-					glVertexArrayBindingDivisor(vao, va_arg(v, GLuint), va_arg(v, GLuint));
-					ret++;
 					continue;
 				}
+				if (c == '\0')
+					continue;
 				goto fail;
 			case VERTEX_ARRAY_COMPILER_NORMALIZED_FLOAT_ARRAY_READ:
+				glVertexArrayAttribFormat(vao, va_arg(v, GLuint), va_arg(v, GLint), va_arg(v, GLenum), GL_TRUE, va_arg(v, GLuint));
 				if (c == '%') {
 					state = VERTEX_ARRAY_COMPILER_PCT_SIGN_READ;
 
-					glVertexArrayAttribFormat(vao, va_arg(v, GLuint), va_arg(v, GLint), va_arg(v, GLenum), GL_TRUE, va_arg(v, GLuint));
-					ret++;
 					continue;
 				}
+				if (c == '\0')
+					continue;
 				goto fail;
 			case VERTEX_ARRAY_COMPILER_DISABLE_ATTRIB_READ:
+				glDisableVertexArrayAttrib(vao, va_arg(v, GLuint));
 				if (c == '%') {
 					state = VERTEX_ARRAY_COMPILER_PCT_SIGN_READ;
 
-					glDisableVertexArrayAttrib(vao, va_arg(v, GLuint));
-					ret++;
+					ret--;
 					continue;
 				}
+				if (c == '\0')
+					continue;
 				goto fail;
 			case VERTEX_ARRAY_COMPILER_ENABLE_ATTRIB_READ:
+				glEnableVertexArrayAttrib(vao, va_arg(v, GLuint));
 				if (c == '%') {
 					state = VERTEX_ARRAY_COMPILER_PCT_SIGN_READ;
-					
-					glEnableVertexArrayAttrib(vao, va_arg(v, GLuint));
+
 					ret++;
 					continue;
 				}
+				if (c == '\0')
+					continue;
 				goto fail;
 			default:
 				goto fail;
 
 		}
-	}
-	/*
-	 * TODO: Cover case when fmt string ends
-	 */
+	} while (*fmt++);
 	return ret;
 fail:
 	return -1;
