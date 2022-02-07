@@ -2,6 +2,7 @@
 #define __VERTEX_ARRAY_COMPILER_H__
 #include <GL/glew.h>
 #include <stdarg.h>
+
 /*
  * *compile*vertex_array
  * [[%e][%i][%f[n]][%l][%b][%a][%d]]
