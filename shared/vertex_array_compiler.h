@@ -35,6 +35,6 @@
 
 int vcompile_bound_vertex_array(const char *fmt, va_list v);
 int compile_bound_vertex_array(const char *fmt, ...);
-int vcompile_vertex_array(const GLint vao, const char *fmt, va_list v);
-int compile_vertex_array(const GLint vao, const char *fmt, ...);
+int vcompile_vertex_array(const GLuint vao, const char *fmt, va_list v);
+int compile_vertex_array(const GLuint vao, const char *fmt, ...);
 #endif
