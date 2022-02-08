@@ -148,7 +148,13 @@ int vcompile_vertex_array(const GLuint vao, const char *fmt, va_list v)
 					state = VERTEX_ARRAY_COMPILER_NORMALIZED_FLOAT_ARRAY_READ;
 					continue;
 				}
-				glVertexArrayAttribFormat(vao, va_arg(v, GLuint), va_arg(v, GLint), va_arg(v, GLenum), GL_FALSE, va_arg(v, GLuint));
+				{
+					GLuint attribindex = va_arg(v, GLuint);
+					GLint size = va_arg(v, GLint);
+					GLenum type = va_arg(v, GLenum);
+					GLuint relativeoffset = va_arg(v, GLuint);
+					glVertexArrayAttribFormat(vao, attribindex, size, type, GL_FALSE, relativeoffset);
+				}
 				if (c == '%') {
 					state = VERTEX_ARRAY_COMPILER_PCT_SIGN_READ;
 
