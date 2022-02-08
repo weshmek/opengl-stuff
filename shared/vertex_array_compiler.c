@@ -223,7 +223,7 @@ int vcompile_vertex_array(const GLuint vao, const char *fmt, va_list v)
 				goto fail;
 
 		}
-	} while (*fmt++);
+	} while (*++fmt);
 	return ret;
 fail:
 	return -1;
