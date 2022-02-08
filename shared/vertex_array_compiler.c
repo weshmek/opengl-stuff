@@ -228,3 +228,14 @@ int vcompile_vertex_array(const GLuint vao, const char *fmt, va_list v)
 fail:
 	return -1;
 }
+
+int compile_vertex_array(const GLuint vao, const char *fmt, ...)
+{
+	va_list v;
+	int ret;
+
+	va_start(v, fmt);
+	ret = vcompile_vertex_array(vao, fmt, v);
+	va_end(v);
+	return ret;
+}
