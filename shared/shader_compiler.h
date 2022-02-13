@@ -1,6 +1,7 @@
 #ifndef __SHADER_COMPILER_H__
 #define __SHADER_COMPILER_H__
 #include <GL/glew.h>
+#include <stdarg.h>
 
 struct shader_program {
 	GLint program;
