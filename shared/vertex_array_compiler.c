@@ -320,8 +320,17 @@ int vcompile_bound_vertex_array(const char *fmt, va_list v)
 					/*
 					 * OpenGL does not have a command to attach an element buffer
 					 * to the currently-bound vertex array
+					 *
+					 * Alternatively, we could call
+					 * glBindBuffer(buffer, ELEMENT_ARRAY_BUFFER);
+					 * here, but it's questionable at best if that's
+					 * an acceptable side-effect
 					 */
-					/*glVertexArrayElementBuffer(vao, buffer);*/
+					/*
+					 * glBindBuffer(buffer, ELEMENT_ARRAY_BUFFER);
+					 * glVertexArrayElementBuffer(vao, buffer);
+					 * glBindBuffer(0, ELEMENT_ARRAY_BUFFER);
+					 */
 					goto command_read_finish;
 				}
 			case VERTEX_ARRAY_COMPILER_DOUBLE_ARRAY_READ:
