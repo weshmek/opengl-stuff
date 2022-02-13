@@ -88,10 +88,10 @@ fail:
 	return 0;
 }
 
-struct shader_program compile_shaders(const char *fmt, ...)
+struct shader_program vcompile_shaders(const char *fmt, va_list v)
 {
+
 	GLint program;
-	va_list v;
 	int num_shader_paths;
 	int num_frag_data_binds;
 	char c;
@@ -104,7 +104,6 @@ struct shader_program compile_shaders(const char *fmt, ...)
 
 	memset(&ret, 0, sizeof(ret));
 
-	va_start(v, fmt);
 	state = READ_STATE_READ_BEGIN;
 	program = glCreateProgram();
 	if (program == 0)
@@ -306,13 +305,22 @@ cleanup_fail:
 		goto fail;
 	}
 
-	va_end(v);
 	ret.program = program;
 	glReleaseShaderCompiler();
 	return ret;
 fail:
-	va_end(v);
 	ret.program = 0;
 	glReleaseShaderCompiler();
+	return ret;
+}
+
+struct shader_program compile_shaders(const char *fmt, ...)
+{
+	va_list v;
+	struct shader_program ret;
+
+	va_start(v, fmt);
+	ret = vcompile_shaders(fmt, v);
+	va_end(v);
 	return ret;
 }
