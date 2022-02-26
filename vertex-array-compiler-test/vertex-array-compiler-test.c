@@ -59,7 +59,7 @@ int main(void)
 	printf("num_enabled = %d\n", num_enabled);
 	check_error();
 	glBindVertexArray(vao);
-	num_enabled = compile_bound_vertex_array("%f%f%+%+%+",
+	num_enabled = compile_bound_vertex_array("%fn%f%3+",
 					2, 4, GL_FLOAT, offsetof(struct vertex, col),
 					3, 4, GL_FLOAT, offsetof(struct vertex, normal),
 					1, 2, 3);
