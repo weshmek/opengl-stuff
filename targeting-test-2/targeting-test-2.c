@@ -7,6 +7,7 @@
 #include "shader_compiler.h"
 #include "print-int-value.h"
 #include "vertex_array_compiler.h"
+#include "shader_query.h"
 #include <math.h>
 #include <string.h>
 
@@ -582,10 +583,7 @@ int main(void)
 	program = compile_shaders("%f2%v", "assets/fragment_shader.fs", 1, "out_colour", 0, "out_id", "assets/vertex_shader.vs");
 	if (program.program == 0)
 		return -1;
-	pos_attrib = glGetAttribLocation(program.program, "position");
-	col_attrib = glGetAttribLocation(program.program, "in_colour");
-	random_offset_attrib = glGetAttribLocation(program.program, "random_offset");
-	target_id_attrib = glGetAttribLocation(program.program, "target_id");
+	query_shader(program.program, "%4a", "position", &pos_attrib, "in_colour", &col_attrib, "random_offset", &random_offset_attrib, "target_id", &target_id_attrib);
 	printf("pos_attrib = %d\ncol_attrib = %d\nrandom_offset_attrib = %d\ntarget_id_attrib = %d\n", pos_attrib, col_attrib, random_offset_attrib, target_id_attrib);
 	glGetProgramInterfaceiv(program.program, GL_PROGRAM_INPUT, GL_ACTIVE_RESOURCES, &num_inputs);
 	glGetProgramInterfaceiv(program.program, GL_PROGRAM_OUTPUT, GL_ACTIVE_RESOURCES, &num_outputs);
@@ -627,24 +625,24 @@ int main(void)
 		/* bind vertex attribs to wall_vao */
 		glBindVertexArray(wall_vao);
 		
-		glBindVertexBuffer(pos_attrib, wall_vbo, 0, sizeof(struct cube_vertex));
-		glBindVertexBuffer(random_offset_attrib + pos_attrib + 1, tetra_vbo, 0, sizeof(struct cube_vertex));
-		glBindVertexBuffer(random_offset_attrib + pos_attrib + 2, target_box_vbo, 0, sizeof(struct cube_vertex));
+		compile_bound_vertex_array("%3b",
+			pos_attrib, wall_vbo, 0, sizeof(struct cube_vertex),
+			random_offset_attrib + pos_attrib + 1, tetra_vbo, 0, sizeof(struct cube_vertex),
+			random_offset_attrib + pos_attrib + 2, target_box_vbo, 0, sizeof(struct cube_vertex));
 		glBindVertexArray(0);
 		check_error();
 	}
 	{
 		/* bind random offset attrib to wall_vao */
-		glBindVertexArray(wall_vao);
-		glVertexAttribIFormat(random_offset_attrib, 1, GL_INT, 0);
-		glVertexAttribIFormat(target_id_attrib, 1, GL_INT, (GLuint)(uintptr_t)my_offsetof(struct instance_state, ->target_id));
-		glBindVertexBuffer(random_offset_attrib, timer_bo, 0, sizeof(struct instance_state));
-		glVertexAttribBinding(random_offset_attrib, random_offset_attrib);
-		glVertexAttribBinding(target_id_attrib, random_offset_attrib);
-		glEnableVertexAttribArray(random_offset_attrib);
-		glEnableVertexAttribArray(target_id_attrib);
-		glVertexBindingDivisor(random_offset_attrib, 1);
-		glBindVertexArray(0);
+		compile_vertex_array(wall_vao, "%2i%b%2a%2+%d",
+			random_offset_attrib, 1, GL_INT, 0,
+			target_id_attrib, 1, GL_INT, (GLuint)(uintptr_t)my_offsetof(struct instance_state, ->target_id),
+			random_offset_attrib, timer_bo, 0, sizeof(struct instance_state),
+			random_offset_attrib, random_offset_attrib,
+			target_id_attrib, random_offset_attrib,
+			random_offset_attrib,
+			target_id_attrib,
+			random_offset_attrib, 1);
 		check_error();
 	}
 
@@ -663,23 +661,21 @@ int main(void)
 		printf("reticle_vao = %d\n", reticle_vao);
 		reticle_program = compile_shaders("%v%f1", "assets/reticle_vertex_shader.vs", "assets/reticle_fragment_shader.fs", 0, "out_col");
 
-		reticle_pos_attrib = glGetAttribLocation(reticle_program.program, "vrt_pos");
-		reticle_col_attrib = glGetAttribLocation(reticle_program.program, "vrt_col");
+		query_shader(reticle_program.program, "%2a", "vrt_pos", &reticle_pos_attrib, "vrt_col", &reticle_col_attrib);
 		printf("reticle_pos_attrib = %d\nreticle_col_attrib = %d\n", reticle_pos_attrib, reticle_col_attrib);
 		buffer_vertex_data(reticle_vbo, reticle_vertices, sizeof(reticle_vertices));
 		format_vertices(reticle_vao, reticle_pos_attrib, reticle_col_attrib);
-		glBindVertexArray(reticle_vao);
-		glBindVertexBuffer(reticle_pos_attrib, reticle_vbo, 0, sizeof(struct cube_vertex));
-		glVertexAttribBinding(reticle_pos_attrib, reticle_pos_attrib);
-		glVertexAttribBinding(reticle_col_attrib, reticle_pos_attrib);
+		compile_vertex_array(reticle_vao, "%b%2a",
+			reticle_pos_attrib, reticle_vbo, 0, sizeof(struct cube_vertex),
+			reticle_pos_attrib, reticle_pos_attrib,
+			reticle_col_attrib, reticle_pos_attrib);
 
 		check_error();
 	}
 	spike_program = compile_shaders("%v%f1", "assets/spike_vertex_shader.vs", "assets/fragment_shader.fs", 0, "out_colour");
 	if (spike_program.program == 0)
 		return -1;
-	pos_attrib = glGetAttribLocation(spike_program.program, "position");
-	col_attrib = glGetAttribLocation(spike_program.program, "in_colour");
+	query_shader(spike_program.program, "%2a", "position", &pos_attrib, "in_colour", &col_attrib);
 	printf("spike_program:\npos_attrib = %d\ncol_attrib = %d\n", pos_attrib, col_attrib);
 	glGenBuffers(1, &spike_vbo);
 	glGenVertexArrays(1, &spike_vao);
@@ -687,15 +683,17 @@ int main(void)
 	bind_vertices(spike_vao, spike_vbo, spike_vertices, sizeof(spike_vertices), pos_attrib, col_attrib);
 
 
-	p_uniform_location = glGetUniformLocation(program.program, "P");
+	query_shader(program.program, "%4u",
+		"P", &p_uniform_location,
+		"R", &r_uniform_location,
+		"S", &s_uniform_location,
+		"timer", &timer_uniform_location);
 	printf("p_uniform_location = %d\n", p_uniform_location);
-	r_uniform_location = glGetUniformLocation(program.program, "R");
 	printf("r_uniform_location = %d\n", r_uniform_location);
-	s_uniform_location = glGetUniformLocation(program.program, "S");
 	printf("s_uniform_location = %d\n", s_uniform_location);
-	timer_uniform_location = glGetUniformLocation(program.program, "timer");
 	printf("timer_uniform_location = %d\n", timer_uniform_location);
-	r_uniform_location_spike = glGetUniformLocation(spike_program.program, "R");
+	query_shader(spike_program.program, "%1u",
+		"R", &r_uniform_location_spike);
 	printf("r_uniform_location_spike = %d\n", r_uniform_location_spike);
 	printf("Renderer: %s\nVendor: %s\nVersion: %s\nShading Language Version: %s\n", renderer, vendor, version, shading_language_version);
 	check_error();
@@ -785,8 +783,10 @@ int main(void)
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 		if (targeted_object != 0) {
-			glVertexAttribBinding(pos_attrib, pos_attrib + random_offset_attrib + 2);
-			glVertexAttribBinding(col_attrib, pos_attrib + random_offset_attrib + 2);
+
+			compile_bound_vertex_array("%2a",
+				pos_attrib, pos_attrib + random_offset_attrib + 2,
+				col_attrib, pos_attrib + random_offset_attrib + 2);
 
 			glDrawArraysInstancedBaseInstance(GL_POINTS, 0, sizeof(target_box_vertices) / sizeof(target_box_vertices[0]), 1, targeted_object - 1);
 
