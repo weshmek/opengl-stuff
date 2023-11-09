@@ -614,7 +614,6 @@ int main(void)
 	glGenVertexArrays(1, &wall_vao);
 	bind_elements(wall_ebo, wall_elements, sizeof(wall_elements));
 	bind_elements(tetra_ebo, tetrahedron_elements, sizeof(tetrahedron_elements));
-	format_vertices(wall_vao, pos_attrib, col_attrib);
 	buffer_vertex_data(wall_vbo, wall_vertices_for_elements, sizeof(wall_vertices_for_elements));
 	buffer_vertex_data(tetra_vbo, tetrahedron_vertices, sizeof(tetrahedron_vertices));
 	buffer_vertex_data(target_box_vbo, target_box_vertices, sizeof(target_box_vertices));
@@ -622,19 +621,15 @@ int main(void)
 
 
 	{
-		/* bind vertex attribs to wall_vao */
-		glBindVertexArray(wall_vao);
-		
-		compile_bound_vertex_array("%3b",
+		/* bind random offset attrib to wall_vao */
+		compile_vertex_array(wall_vao, "%f%+%f%+%3b%2i%b%2a%2+%d",
+			pos_attrib, 3, GL_FLOAT, (GLint)(uintptr_t) cube_vertex_posn_offset,
+			pos_attrib,
+			col_attrib, 4, GL_FLOAT, (GLint)(uintptr_t)cube_vertex_col_offset,
+			col_attrib,
 			pos_attrib, wall_vbo, 0, sizeof(struct cube_vertex),
 			random_offset_attrib + pos_attrib + 1, tetra_vbo, 0, sizeof(struct cube_vertex),
-			random_offset_attrib + pos_attrib + 2, target_box_vbo, 0, sizeof(struct cube_vertex));
-		glBindVertexArray(0);
-		check_error();
-	}
-	{
-		/* bind random offset attrib to wall_vao */
-		compile_vertex_array(wall_vao, "%2i%b%2a%2+%d",
+			random_offset_attrib + pos_attrib + 2, target_box_vbo, 0, sizeof(struct cube_vertex),
 			random_offset_attrib, 1, GL_INT, 0,
 			target_id_attrib, 1, GL_INT, (GLuint)(uintptr_t)my_offsetof(struct instance_state, ->target_id),
 			random_offset_attrib, timer_bo, 0, sizeof(struct instance_state),
