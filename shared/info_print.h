@@ -10,9 +10,10 @@
  */
 #define info_print(args...) \
 	do { \
-		__COUNTER__;\
-		printf(args);\
-		printf("\x1B[K");\
+		__COUNTER__; \
+		printf(args); \
+		/* ANSI terminal code to clear the line */ \
+		printf("\x1B[K"); \
 	} while (0);
 
 #if 0
@@ -32,7 +33,8 @@
  */
 #define info_clear() \
 	do { \
-		printf("\x1B[%dF", __COUNTER__);\
+		/* ANSI terminal code to move the cursor back __COUNTER__ lines */ \
+		printf("\x1B[%dF", __COUNTER__); \
 	} while (0);
 
 #endif
