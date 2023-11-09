@@ -6,7 +6,9 @@
 /*
  * %a: const char*, GLuint*
  * 	Reads a vertex attrib
+ * %u: const char* GLuint*
+ * 	Reads a uniform location
  */
-int query_shader(const char *fmt, GLuint program, ...);
-int vquery_shader(const char *fmt, GLuint program, va_list v);
+int query_shader(GLuint program, const char *fmt, ...);
+int vquery_shader(GLuint program, const char *fmt, va_list v);
 #endif
