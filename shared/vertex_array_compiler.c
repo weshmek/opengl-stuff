@@ -83,48 +83,61 @@ int vcompile_vertex_array(const GLuint vao, const char *fmt, va_list v)
 			case VERTEX_ARRAY_COMPILER_PCT_SIGN_READ:
 				num_reps = 0;
 			case VERTEX_ARRAY_COMPILER_NUMBERS_READ:
-				if (c == 'i') {
+			switch (c) {
+				case 'i': {
 					state = VERTEX_ARRAY_COMPILER_INT_ARRAY_READ;
 					continue;
 				}
-				if (c == 'e') {
+				case 'e': {
 					state = VERTEX_ARRAY_COMPILER_ELEMENT_BUFFER_BINDING_READ;
 					continue;
 				}
-				if (c == 'f') {
+				case 'f': {
 					state = VERTEX_ARRAY_COMPILER_FLOAT_ARRAY_READ;
 					continue;
 				}
-				if (c == 'l') {
+				case 'l': {
 					state = VERTEX_ARRAY_COMPILER_DOUBLE_ARRAY_READ;
 					continue;
 				}
-				if (c == 'b') {
+				case 'b': {
 					state = VERTEX_ARRAY_COMPILER_BUFFER_BINDING_READ;
 					continue;
 				}
-				if (c == 'a') {
+				case 'a': {
 					state = VERTEX_ARRAY_COMPILER_ARRAY_ATTRIB_BINDING_READ;
 					continue;
 				}
-				if (c == 'd') {
+				case 'd': {
 					state = VERTEX_ARRAY_COMPILER_DIVISOR_READ;
 					continue;
 				}
-				if (c == '-') {
+				case '-': {
 					state = VERTEX_ARRAY_COMPILER_DISABLE_ATTRIB_READ;
 					continue;
 				}
-				if (c == '+') {
+				case '+': {
 					state = VERTEX_ARRAY_COMPILER_ENABLE_ATTRIB_READ;
 					continue;
 				}
+				case '9':
+				case '8':
+				case '7':
+				case '6':
+				case '5':
+				case '4':
+				case '3':
+				case '2':
+				case '1':
+				case '0':
 				if ((c <= '9') && (c >= '0')) {
 					num_reps = (10 * num_reps) + (c - '0');
 					state = VERTEX_ARRAY_COMPILER_NUMBERS_READ;
 					continue;
 				}
-				goto fail;
+				default:
+					goto fail;
+			}
 			default:
 				if (num_reps == 0)
 					num_reps = 1;
@@ -287,48 +300,61 @@ int vcompile_bound_vertex_array(const char *fmt, va_list v)
 			case VERTEX_ARRAY_COMPILER_PCT_SIGN_READ:
 				num_reps = 0;
 			case VERTEX_ARRAY_COMPILER_NUMBERS_READ:
-				if (c == 'i') {
+			switch(c){
+				case 'i': {
 					state = VERTEX_ARRAY_COMPILER_INT_ARRAY_READ;
 					continue;
 				}
-				if (c == 'e') {
+				case 'e': {
 					state = VERTEX_ARRAY_COMPILER_ELEMENT_BUFFER_BINDING_READ;
 					continue;
 				}
-				if (c == 'f') {
+				case 'f': {
 					state = VERTEX_ARRAY_COMPILER_FLOAT_ARRAY_READ;
 					continue;
 				}
-				if (c == 'l') {
+				case 'l': {
 					state = VERTEX_ARRAY_COMPILER_DOUBLE_ARRAY_READ;
 					continue;
 				}
-				if (c == 'b') {
+				case 'b': {
 					state = VERTEX_ARRAY_COMPILER_BUFFER_BINDING_READ;
 					continue;
 				}
-				if (c == 'a') {
+				case 'a': {
 					state = VERTEX_ARRAY_COMPILER_ARRAY_ATTRIB_BINDING_READ;
 					continue;
 				}
-				if (c == 'd') {
+				case 'd': {
 					state = VERTEX_ARRAY_COMPILER_DIVISOR_READ;
 					continue;
 				}
-				if (c == '-') {
+				case '-': {
 					state = VERTEX_ARRAY_COMPILER_DISABLE_ATTRIB_READ;
 					continue;
 				}
-				if (c == '+') {
+				case '+': {
 					state = VERTEX_ARRAY_COMPILER_ENABLE_ATTRIB_READ;
 					continue;
 				}
-				if ((c <= '9') && (c >= '0')) {
+				case '0':
+				case '1':
+				case '2':
+				case '3':
+				case '4':
+				case '5':
+				case '6':
+				case '7':
+				case '8':
+				case '9':
+				{
 					num_reps = (10 * num_reps) + (c - '0');
 					state = VERTEX_ARRAY_COMPILER_NUMBERS_READ;
 					continue;
 				}
-				goto fail;
+				default:
+					goto fail;
+			}
 			default:
 				if (num_reps == 0)
 					num_reps = 1;
