@@ -31,6 +31,7 @@ int main(void)
 	GLuint vao;
 	GLuint vbo;
 	int num_enabled;
+	GLint element_buffer_binding;
 
 
 	if (!glfwInit())
@@ -64,6 +65,11 @@ int main(void)
 					3, 4, GL_FLOAT, offsetof(struct vertex, normal),
 					1, 2, 3);
 	printf("num_enabled = %d\n", num_enabled);
+
+	glGetVertexArrayiv(vao, GL_ELEMENT_ARRAY_BUFFER_BINDING, &element_buffer_binding);
+
+	printf("element_buffer_binding = %d\n", element_buffer_binding);
+
 
 /*
 	//glClearColor(0.0f, 0.5f, 1.0f, 1.0f);
