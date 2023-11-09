@@ -450,25 +450,6 @@ static void bind_elements(GLuint ebo, const void *epts, GLint esize)
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
-void format_vertices(GLuint vao, GLuint pos_attrib, GLuint col_attrib)
-{
-	glBindVertexArray(vao);
-	compile_bound_vertex_array("%f%+%f%+",
-					pos_attrib, 3, GL_FLOAT, (GLint)(uintptr_t) cube_vertex_posn_offset,
-					pos_attrib,
-					col_attrib, 4, GL_FLOAT, (GLint)(uintptr_t)cube_vertex_col_offset,
-					col_attrib);
-
-/*
-	glVertexAttribFormat(pos_attrib, 3, GL_FLOAT, GL_FALSE, (GLint)(uintptr_t)cube_vertex_posn_offset);
-	glVertexAttribFormat(col_attrib, 4, GL_FLOAT, GL_FALSE, (GLint)(uintptr_t)cube_vertex_col_offset);
-	glEnableVertexAttribArray(pos_attrib);
-	glEnableVertexAttribArray(col_attrib);
-*/
-	glBindVertexArray(0);
-	check_error();
-}
-
 #define win_width 640
 #define win_height 480
 
@@ -611,7 +592,7 @@ int main(void)
 	glGenBuffers(1, &tetra_vbo);
 	glGenBuffers(1, &tetra_ebo);
 	glGenBuffers(1, &target_box_vbo);
-	glGenVertexArrays(1, &wall_vao);
+	glCreateVertexArrays(1, &wall_vao);
 	bind_elements(wall_ebo, wall_elements, sizeof(wall_elements));
 	bind_elements(tetra_ebo, tetrahedron_elements, sizeof(tetrahedron_elements));
 	buffer_vertex_data(wall_vbo, wall_vertices_for_elements, sizeof(wall_vertices_for_elements));
@@ -619,9 +600,12 @@ int main(void)
 	buffer_vertex_data(target_box_vbo, target_box_vertices, sizeof(target_box_vertices));
 	check_error();
 
+	if (GL_FALSE == glIsVertexArray(wall_vao)) {
+		printf("wall_vao is not a vertex array!");
+	}
 
 	{
-		/* bind random offset attrib to wall_vao */
+		/* compile wall vao */
 		compile_vertex_array(wall_vao, "%f%+%f%+%3b%2i%b%2a%2+%d",
 			pos_attrib, 3, GL_FLOAT, (GLint)(uintptr_t) cube_vertex_posn_offset,
 			pos_attrib,
@@ -637,7 +621,8 @@ int main(void)
 			target_id_attrib, random_offset_attrib,
 			random_offset_attrib,
 			target_id_attrib,
-			random_offset_attrib, 1);
+			random_offset_attrib,
+			1);
 		check_error();
 	}
 
@@ -652,15 +637,18 @@ int main(void)
 		 */
 		glGenBuffers(1, &reticle_vbo);
 		printf("reticle_vbo = %d\n", reticle_vbo);
-		glGenVertexArrays(1, &reticle_vao);
+		glCreateVertexArrays(1, &reticle_vao);
 		printf("reticle_vao = %d\n", reticle_vao);
 		reticle_program = compile_shaders("%v%f1", "assets/reticle_vertex_shader.vs", "assets/reticle_fragment_shader.fs", 0, "out_col");
 
 		query_shader(reticle_program.program, "%2a", "vrt_pos", &reticle_pos_attrib, "vrt_col", &reticle_col_attrib);
 		printf("reticle_pos_attrib = %d\nreticle_col_attrib = %d\n", reticle_pos_attrib, reticle_col_attrib);
 		buffer_vertex_data(reticle_vbo, reticle_vertices, sizeof(reticle_vertices));
-		format_vertices(reticle_vao, reticle_pos_attrib, reticle_col_attrib);
-		compile_vertex_array(reticle_vao, "%b%2a",
+		compile_vertex_array(reticle_vao, "%2f%2+%b%2a",
+			pos_attrib, 3, GL_FLOAT, (GLint)(uintptr_t) cube_vertex_posn_offset,
+			col_attrib, 4, GL_FLOAT, (GLint)(uintptr_t)cube_vertex_col_offset,
+			pos_attrib,
+			col_attrib,
 			reticle_pos_attrib, reticle_vbo, 0, sizeof(struct cube_vertex),
 			reticle_pos_attrib, reticle_pos_attrib,
 			reticle_col_attrib, reticle_pos_attrib);
