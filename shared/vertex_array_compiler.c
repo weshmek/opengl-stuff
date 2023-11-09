@@ -29,7 +29,7 @@
  * %+: GLuint attribindex, index to enable
  *
  * the *compile_bound_vertex_array calls should not affect the value of bound vertex array
- * calls to *compile*vertex_array should not affect any attributes not specified in the argument liss
+ * calls to *compile*vertex_array should not affect any attributes not specified in the argument list
  */
 
 
@@ -351,6 +351,8 @@ int vcompile_bound_vertex_array(const char *fmt, va_list v)
 							/*
 							 * OpenGL does not have a command to attach an element buffer
 							 * to the currently-bound vertex array
+							 *
+							 * Therefore, we do nothing here.
 							 *
 							 * Alternatively, we could call
 							 * glBindBuffer(buffer, ELEMENT_ARRAY_BUFFER);
