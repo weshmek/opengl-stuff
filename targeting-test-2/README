@@ -1,0 +1,25 @@
+targeting-test-2: Targeting using GPU
+
+For a game like Minecraft, it is important for the game to know which block is currently targeted by the player (also which side of which block, but that is beyond the scope of this example).  I believe Minecraft and similar games accomplish this through the method demonstrated in this example, as it is cheap and gives pixel-perfect targeting capability.
+
+In this example, the target is identified by reading values back from the framebuffer, thereby offloading the work to the GPU.  In addition to the framebuffer visible to the user, this example has a second, invisible framebuffer (called a renderbuffer by OpenGL) which instead of discrete colours, consists of integer values.  The "colour" of the "pixel" in the centre of the renderbuffer uniquely identifies a target. The renderbuffer is populated in the same render pass as the visible framebuffer, meaning there is very little overhead to using this method.
+
+
+Controls:
+WASD - Move about the scene along the XZ plane
+QE - Move about the scene along the Y axis
+SPACE - toggle between cubes and tetrahedra as the objects to be rendered
+M - Toggle the clip mode
+O - Toggle the clip origin
+F + UP/DOWN - change the "far" value (has no visible effect)
+N + UP/DOWN - change the "near" value (has no visible effect)
+C - Toggle Depth Clamping
+ESC - Exit the program
+G - Toggle the front face value for back-face culling
+H - Toggle the cull face mode for back-face culling
+J - Toggle back-face culling
+R - Reset the scene
+Z - Toggle depth buffering
+X - Toggle depth buffer function
+P - Toggle polygon mode (line, point, fill)
+T - Toggle which targeting reticle is displayed (crosshair, "spike", none)
